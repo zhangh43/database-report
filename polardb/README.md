@@ -22,7 +22,7 @@ Write path
 4. RO node sends a ROlsn back to RW node, ROlsn is the lsn which the RO node has replayed.
 5. RO node could support SI read elder than ROlsn.
 6. RW node receives all the ROlsn from RO nodes, and purge redo log and flush dirty pages before the min{ROlsns}
-7. RO node whose ROlsn is too far behind by RWlsn, it will be killed.
+7. RO node, whose ROlsn is too far behind by RWlsn, will be killed.
 
 The keypoints are:
 1. RW node cannot flush dirty pages aggresively, or RO nodes have a risk of read future pages(replayed to lsn100, but read a page of lsn 105, it's not consistent since lsn101-lsn104 is missing)
@@ -30,4 +30,5 @@ The keypoints are:
 
 Does RO node need to fetch all the redo logs from PolarFS?
 I think it's not needed. Since different from MySQL/PG, the standby(RO) node needs to replay all the redo logs and generate the new physical pages, PolarDB uses shared disk and RO nodes rely on RW node to flush the dirty pages to disks. RO nodes only need to consider the following case:
-1. The redo log contains a page modification on exising buffer poll of RO node, then the
+1. The redo log contains a page modification on the exising buffer pool of RO nodes, then the it's OK to replay on the fly or by user sessions.
+2. The redo log's modification is not on the existing buffer pool of RO nodes. We cannot load the page in buffer pool and replay it, since RO node cannot flush dirty pages(limited by shared disk). In this case, PolarDB can only replay redo logs at user sessions.
